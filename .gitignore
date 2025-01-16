@@ -1,0 +1,43 @@
+# Lua/Neovim
+*.rock
+luacov.*
+.luacov
+
+# Temporary/OS files
+.DS_Store
+*.swp
+*.swo
+*~
+tmp/
+.tmp/
+temp/
+.temp/
+
+# Voice recording temporary files
+/tmp/voice.nvim/
+
+# Build artifacts (for whisper.cpp)
+build/
+*.o
+*.so
+*.dll
+*.dylib
+
+# Dependencies that should be installed separately
+whisper.cpp/
+
+# Logs and debug files
+*.log
+debug/
+
+# IDE/Editor specific
+.vscode/
+.idea/
+*.iml
+.project
+.settings/
+.classpath
+
+# Test coverage
+coverage/
+.coverage 
