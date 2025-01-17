@@ -1,6 +1,11 @@
 local M = {}
 
 -- Import required modules
+local has_plenary, Job = pcall(require, 'plenary.job')
+if not has_plenary then
+    error('voice.nvim requires plenary.nvim to be installed')
+end
+
 local config = require('voice.config')
 local core = require('voice.core')
 local installer = require('voice.installer')
@@ -24,8 +29,11 @@ local function create_commands()
     vim.api.nvim_create_user_command('VoiceInstall', function()
         if installer.check_dependencies() then
             echo_message('Installing whisper.cpp...', 'WARN')
-            if installer.install_whisper_cpp() then
+            local success, err = installer.install_whisper_cpp()
+            if success then
                 echo_message('Installation completed successfully', 'WARN')
+            else
+                echo_message('Installation failed: ' .. tostring(err), 'ERROR')
             end
         end
     end, {
@@ -49,27 +57,42 @@ end
 
 -- Plugin setup function
 function M.setup(opts)
-    -- Initialize configuration
-    config.setup(opts)
+    -- Check dependencies first
+    if not installer.check_dependencies() then
+        echo_message('Missing required dependencies. Plugin initialization aborted.', 'ERROR')
+        return false
+    end
 
-    -- Create commands
-    create_commands()
+    -- Initialize configuration with error handling
+    local ok, err = pcall(function()
+        config.setup(opts)
+    end)
+    if not ok then
+        echo_message('Configuration error: ' .. tostring(err), 'ERROR')
+        return false
+    end
 
-    -- Set up keymaps using the keymaps module
-    keymaps.setup()
+    -- Create commands with error handling
+    ok, err = pcall(create_commands)
+    if not ok then
+        echo_message('Failed to create commands: ' .. tostring(err), 'ERROR')
+        return false
+    end
+
+    -- Set up keymaps with error handling
+    ok, err = pcall(keymaps.setup)
+    if not ok then
+        echo_message('Failed to setup keymaps: ' .. tostring(err), 'ERROR')
+        return false
+    end
 
     -- Set up auto-cleanup
     vim.api.nvim_create_autocmd('VimLeavePre', {
         callback = function()
-            keymaps.clear() -- Clear keymaps on exit
+            keymaps.clear()
             core.cleanup()
-        end,
+        end
     })
-
-    -- Check dependencies on startup
-    if not installer.check_dependencies() then
-        echo_message('Some dependencies are missing. Run :VoiceInstall after installing the required dependencies.', 'WARN')
-    end
 
     return M
 end
@@ -81,4 +104,4 @@ M.stop_recording = core.stop_recording
 -- Expose keymap management
 M.update_keymaps = keymaps.update
 
-return M 
+return M

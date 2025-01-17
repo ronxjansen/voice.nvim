@@ -13,14 +13,14 @@ end
 local state = {
     is_recording = false,
     current_job = nil,
-    recording_start_time = nil,
+    recording_start_time = nil
 }
 
 -- Get the temporary file paths
 local function get_temp_paths()
     local temp_dir = config.get().temp_dir
     return {
-        wav = temp_dir .. 'recording.wav',
+        wav = temp_dir .. 'recording.wav'
     }
 end
 
@@ -72,20 +72,16 @@ local function start_recording()
     -- Start recording using sox
     state.current_job = Job:new({
         command = 'rec',
-        args = {
-            '-r', tostring(sample_rate),
-            '-c', '1',  -- mono audio
-            '-b', '16', -- 16-bit depth
-            paths.wav,
-            'rate', tostring(sample_rate),
-            'silence', '1', '0.1', '1%', -- Start recording on sound
+        args = {'-r', tostring(sample_rate), '-c', '1', -- mono audio
+        '-b', '16', -- 16-bit depth
+        paths.wav, 'rate', tostring(sample_rate), 'silence', '1', '0.1', '1%' -- Start recording on sound
         },
         on_exit = function(j, code)
             if code ~= 0 then
                 echo_message('Recording failed', 'ERROR')
                 cleanup_temp_files()
             end
-        end,
+        end
     })
 
     state.current_job:start()
@@ -102,13 +98,15 @@ local function start_recording()
 
     -- Update status
     update_status()
-    
+
     -- Set up timer for status updates
     vim.fn.timer_start(1000, function()
         if state.is_recording then
             update_status()
         end
-    end, { ['repeat'] = -1 })
+    end, {
+        ['repeat'] = -1
+    })
 end
 
 -- Transcribe audio using whisper.cpp
@@ -135,7 +133,7 @@ local function transcribe_whisper_cpp(callback)
             col = (vim.o.columns - width) / 2,
             row = (vim.o.lines - height) / 2,
             style = 'minimal',
-            border = 'rounded',
+            border = 'rounded'
         }
         win = vim.api.nvim_open_win(buf, false, opts)
         vim.api.nvim_buf_set_lines(buf, 0, -1, false, {'Transcribing...', 'Please wait...'})
@@ -144,12 +142,8 @@ local function transcribe_whisper_cpp(callback)
     -- Run whisper.cpp transcription
     Job:new({
         command = executable,
-        args = {
-            '-m', string.format('models/ggml-%s.bin', model),
-            '-f', paths.wav,
-            '-l', 'auto', -- auto-detect language
-            '--output-txt',
-        },
+        args = {'-m', string.format('models/ggml-%s.bin', model), '-f', paths.wav, '-l', 'auto', -- auto-detect language
+        '--output-txt'},
         cwd = installer.get_install_dir(),
         on_exit = function(j, code)
             if win then
@@ -168,14 +162,14 @@ local function transcribe_whisper_cpp(callback)
                 local text = f:read('*all')
                 f:close()
                 os.remove(output_file)
-                
+
                 if callback then
                     callback(text)
                 end
             else
                 echo_message('Failed to read transcription output', 'ERROR')
             end
-        end,
+        end
     }):start()
 end
 
@@ -188,7 +182,8 @@ local function transcribe_openai(callback)
     end
 
     local paths = get_temp_paths()
-    
+    local win = nil
+
     -- Show transcription progress
     if config.get().ui.floating_window then
         local buf = vim.api.nvim_create_buf(false, true)
@@ -201,23 +196,18 @@ local function transcribe_openai(callback)
             col = (vim.o.columns - width) / 2,
             row = (vim.o.lines - height) / 2,
             style = 'minimal',
-            border = 'rounded',
+            border = 'rounded'
         }
-        local win = vim.api.nvim_open_win(buf, false, opts)
+        win = vim.api.nvim_open_win(buf, false, opts)
         vim.api.nvim_buf_set_lines(buf, 0, -1, false, {'Transcribing with OpenAI...', 'Please wait...'})
     end
 
     -- Use curl to send request to OpenAI API
     Job:new({
         command = 'curl',
-        args = {
-            'https://api.openai.com/v1/audio/transcriptions',
-            '-H', 'Authorization: Bearer ' .. api_key,
-            '-H', 'Content-Type: multipart/form-data',
-            '-F', 'file=@' .. paths.wav,
-            '-F', 'model=whisper-1',
-            '-F', 'response_format=text',
-        },
+        args = {'https://api.openai.com/v1/audio/transcriptions', '-H', 'Authorization: Bearer ' .. api_key, '-H',
+                'Content-Type: multipart/form-data', '-F', 'file=@' .. paths.wav, '-F', 'model=whisper-1', '-F',
+                'response_format=text'},
         on_exit = function(j, code)
             if win then
                 vim.api.nvim_win_close(win, true)
@@ -232,7 +222,7 @@ local function transcribe_openai(callback)
             if callback then
                 callback(result)
             end
-        end,
+        end
     }):start()
 end
 
@@ -255,16 +245,16 @@ function M.stop_recording()
             local pos = vim.api.nvim_win_get_cursor(0)
             local line = pos[1] - 1
             local col = pos[2]
-            
+
             -- Split the current line at cursor position
             local current_line = vim.api.nvim_get_current_line()
             local before = string.sub(current_line, 1, col)
             local after = string.sub(current_line, col + 1)
-            
+
             -- Insert transcribed text between split
             local new_text = before .. text .. after
             vim.api.nvim_set_current_line(new_text)
-            
+
             -- Move cursor to end of inserted text
             vim.api.nvim_win_set_cursor(0, {line + 1, col + #text})
         end
@@ -293,4 +283,4 @@ function M.cleanup()
     cleanup_temp_files()
 end
 
-return M 
+return M

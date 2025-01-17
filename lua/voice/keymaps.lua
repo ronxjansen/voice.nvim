@@ -11,7 +11,7 @@ end
 -- Default keymap options
 local default_opts = {
     noremap = true,
-    silent = true,
+    silent = true
 }
 
 -- Set up the default keymaps
@@ -31,7 +31,7 @@ end
 -- Remove all plugin keymaps
 function M.clear()
     local keymaps = config.get().keymaps
-    
+
     -- Remove toggle recording keymap if it exists
     if keymaps.toggle_recording then
         pcall(vim.keymap.del, 'n', keymaps.toggle_recording)
@@ -52,4 +52,4 @@ function M.update(new_keymaps)
     M.setup()
 end
 
-return M 
+return M
